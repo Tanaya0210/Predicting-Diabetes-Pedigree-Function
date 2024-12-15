@@ -1,0 +1,145 @@
+---
+title: "Predicting Diabetes Pedigree Function"
+author: "Tanaya Sachin Jadhav"
+date: "December 2024"
+output:
+  pdf_document:
+    latex_engine: xelatex
+    number_sections: true
+fontsize: 12pt
+mainfont: "Times New Roman"
+---
+
+# Introduction
+The aim of this project is to analyze diagnostic measurements from a dataset of female patients to predict the Diabetes Pedigree Function (DPF). The DPF is a quantitative measure that estimates the probability of diabetes occurrence based on genetic and physiological factors. Understanding the relationships between these factors and the DPF can assist clinicians in assessing individual diabetes risk and formulating preventive or corrective measures to mitigate it.
+In this study, seven features are considered: age, glucose concentration, blood pressure, triceps skin fold thickness, insulin levels, BMI, and DPF. Using multiple linear regression techniques, this project aims to identify the most significant predictors of DPF, exclude insignificant variables, and construct a simplified, actionable model for clinical applications. This will include an exploratory data analysis for pattern detection and relationship determination within the dataset, as well as an in-depth testing of the assumptions of a regression model and applying statistical methodology to find out what is really affecting DPF.
+
+# Data Exploration
+## Summary of the Dataset
+```{r}
+# Load necessary libraries
+library(tidyverse)
+
+# Load the dataset
+data <- read.csv("~/Downloads/Diabetes.csv", header = TRUE)
+
+# Display initial summary statistics
+summary(data)
+
+# Data Cleaning: Replace zeros with NA for Insulin and SkinThickness
+data$Insulin[data$Insulin == 0] <- NA
+data$SkinThickness[data$SkinThickness == 0] <- NA
+
+# Impute missing values with the median
+data$Insulin[is.na(data$Insulin)] <- median(data$Insulin, na.rm = TRUE)
+data$SkinThickness[is.na(data$SkinThickness)] <- median(data$SkinThickness, na.rm = TRUE)
+
+# Validate that zeros and missing values are handled
+# Check for remaining zeros
+print("Zero Value Counts:")
+print(colSums(data == 0))
+
+# Check for remaining NAs
+print("Missing Value Counts:")
+print(colSums(is.na(data)))
+
+# Display updated summary statistics
+summary(data)
+
+# Visualize cleaned data: Boxplot for all variables
+data %>% 
+  gather(key = "Variable", value = "Value") %>% 
+  ggplot(aes(x = Variable, y = Value)) +
+  geom_boxplot(fill = "blue", alpha = 0.6) +
+  theme_minimal() +
+  labs(title = "Boxplot of Variables After Cleaning", x = "Variable", y = "Value")
+
+```
+### Observations
+1. **Insulin**:  
+   - The `Insulin` variable shows significant outliers, which is expected due to its naturally high variability.  
+   - Initially, zero values were observed, which were treated as missing data and replaced with the median value.
+
+2. **SkinThickness**:  
+   - Some outliers are present, but overall the distribution improved after imputing missing values.
+
+3. **Glucose**:  
+   - The `Glucose` variable has a tighter distribution with fewer extreme values, suggesting reliable measurements.
+
+4. **BloodPressure, BMI, and Age**:  
+   - These variables show moderate variability with minimal outliers, indicating they are clean and usable for modeling.
+
+5. **DPF (Diabetes Pedigree Function)**:  
+   - The `DPF` variable has a narrow range of values with no visible outliers, making it a stable response variable.
+
+# Methodology
+## Multiple Linear Regression Model
+```{r}
+# Fit the initial multiple linear regression model with all predictors
+model <- lm(DPF ~ Age + Glucose + BloodPressure + SkinThickness + Insulin + BMI, data = data)
+summary(model)
+
+# Load the MASS library
+library(MASS)
+
+# Use stepwise regression to simplify the model
+final_model <- stepAIC(model, direction = "both")
+summary(final_model)
+```
+```{r}
+library(MASS)
+final_model <- stepAIC(model, direction = "both")
+summary(final_model)
+```
+
+## Visualizations
+```{r}
+# Histograms for all variables
+data %>% gather(key = "Variable", value = "Value") %>% 
+  ggplot(aes(x = Value)) +
+  geom_histogram(bins = 30, fill = "blue", alpha = 0.7) +
+  facet_wrap(~Variable, scales = "free") +
+  theme_minimal()
+```
+## Assumption Checks
+```{r}
+# Residual Diagnostics for Final Model
+par(mfrow = c(2, 2))
+plot(final_model)
+
+# Durbin-Watson test for residual independence
+library(car)
+durbinWatsonTest(final_model)
+
+# Shapiro-Wilk test for normality of residuals
+shapiro.test(resid(final_model))
+```
+
+# Results
+The final multiple linear regression model identified the following significant predictors of the Diabetes Pedigree Function (DPF):
+Glucose (Estimate = 0.00068, p = 0.04681): A positive and significant effect on DPF.
+BMI (Estimate = 0.00574, p = 0.00813): A strong positive and highly significant effect on DPF.
+While SkinThickness and Insulin were retained in the model, their effects were statistically insignificant (p > 0.05).
+The Adjusted R-squared value of 3.38% indicates that the model explains a small portion of the variability in DPF. However, the overall F-statistic (7.381, p < 0.001) suggests that the model is statistically significant.
+
+# Discussion
+Interpretation of the results: The simplified multiple linear regression model found Glucose and BMI to be significant predictors of the Diabetes Pedigree Function (DPF), whereas other variables such as SkinThickness and Insulin were not statistically significant.
+1. Glucose:
+Estimate: 0.0008644, p-value: 0.04681,
+The positive contribution of higher glucose levels to DPF implies a significant relationship between glucose concentration and genetic predisposition to diabetes.
+2. BMI (Body Mass Index):
+Estimate: 0.0057419, p-value: 0.00813, 
+BMI has a strong positive effect on DPF. This shows a 1% statistical significance and therefore has an influence on DPF.
+3. SkinThickness and Insulin:
+These predictors remained in the model but failed to achieve statistical significance at a level of p > 0.05. SkinThickness (p = 0.72666) and Insulin (p = 0.10503) do not seem to have a significant linear relationship with DPF in this data set.
+Model Performance: 
+1. Adjusted R-squared: 0.03383,
+The model explains 3.38% variability in DPF, which is relatively low. This could indicate that more predictors or other non-linear relationships may account for the variation in DPF better.
+2. F-statistic: 7.381 (p-value = 7.89e-06),
+The overall model is statistically significant, meaning that at least one predictor has a meaningful relationship with DPF.
+
+# Conclusion
+The aim of the analysis was to predict DPF using multiple linear regression models. Stepwise regression identified Glucose and BMI as significant predictors of DPF:
+Glucose: Positive correlation statistically significant with DPF (Estimate = 0.0008644, p = 0.04681), which means the higher glucose levels are associated with an increased DPF score.
+BMI: A strong positive predictor (Estimate = 0.0057419, p = 0.00813), which points towards a role in genetic predisposition to diabetes.
+Although the two variables SkinThickness and Insulin remained in the model, they were not significant at the 5% level. The model has an Adjusted R-squared of 3.38%, which is relatively low and indicates very low variability explained by predictors. However, the overall model is statistically significant, and the F-statistic equals 7.381 (p < 0.001), suggesting that glucose and BMI are crucial predictors of diabetes.
